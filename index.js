@@ -78,7 +78,7 @@ prompt.get(schema, (err, result) => {
         console.log(response.body);
       });
     case 'state' :
-      request.get('http://' + host + '/api/state/' + stateId, (err, response) => {
+      request.get('http://' + host + '/api/dpt-state/' + stateId, (err, response) => {
         if (err) return console.log(err);
         let body = JSON.parse(response.body);
         console.log('Current state : ' + body[Object.keys(body)[0]].toUpperCase());
