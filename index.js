@@ -5,10 +5,11 @@ const {spawnSync} = require('child_process');
 const forge = require('node-forge');
 const pki = forge.pki;
 const base64 = require('js-base64').Base64;
+const request = require('request');
 
 const action = process.argv[2];
-if (!action) throw('No action specified.');
-
+if (!action) throw('No action specified. Ex : node index operation host:port');
+const host = process.argv[3] || 'localhost:3000';
 
 prompt.start();
 const schema = {
@@ -61,5 +62,27 @@ prompt.get(schema, (err, result) => {
   let crlCheckResult = spawned.stdout.toString().indexOf('OK') > -1
   console.log(crlCheckResult ? '- Verified\n' : '- Not verified / revoked');
   if (!crlCheckResult) return;
+
+  const familyName = 'provinceDPT';
+  const payloadNameHash = createHash('sha512').update(createHash('sha256').update(UID).digest('hex')).digest('hex');
+  const familyNameHash = createHash('sha512').update(familyName).digest('hex');
+  const stateId = familyNameHash.substr(0, 6) + payloadNameHash.substr(-64);
+  console.log('stateId : ' + stateId);
+
+  switch(action) {
+    case 'register' : 
+      // Generate unique random
+      const u = createHash('sha256').update((new Date()).valueOf().toString()).digest('hex').substr(0, 16);
+      request.post('http://' + host + '/api/register', {form : {r : u, voterId : UID }}, (err, response) => {
+        if (err) return console.log(err);
+        console.log(response.body);
+      });
+    case 'state' :
+      request.get('http://' + host + '/api/state/' + stateId, (err, response) => {
+        if (err) return console.log(err);
+        let body = JSON.parse(response.body);
+        console.log('Current state : ' + body[Object.keys(body)[0]].toUpperCase());
+      });
+  }
 
 });
