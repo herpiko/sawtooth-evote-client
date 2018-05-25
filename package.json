@@ -19,7 +19,9 @@
   "dependencies": {
     "js-base64": "^2.4.5",
     "node-forge": "^0.7.5",
+    "pbkdf2": "^3.0.16",
     "prompt": "^1.0.0",
+    "qr-image": "^3.2.0",
     "request": "^2.86.0"
   }
 }

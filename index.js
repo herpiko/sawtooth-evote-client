@@ -1,11 +1,14 @@
 const fs = require('fs');
+const qr = require('qr-image');
 const prompt = require('prompt');
 const {createHash} = require('crypto')
 const {spawnSync} = require('child_process');
+const execSync = require('child_process').execSync;
 const forge = require('node-forge');
 const pki = forge.pki;
 const base64 = require('js-base64').Base64;
 const request = require('request');
+const pbkdf2 = require('pbkdf2');
 
 const action = process.argv[2];
 if (!action) throw('No action specified. Ex : node index operation host:port');
@@ -68,15 +71,47 @@ prompt.get(schema, (err, result) => {
   const familyNameHash = createHash('sha512').update(familyName).digest('hex');
   const stateId = familyNameHash.substr(0, 6) + payloadNameHash.substr(-64);
   console.log('stateId : ' + stateId);
-
+  console.log('action : ' + action);
   switch(action) {
-    case 'register' : 
+    case 'activate' : 
+      console.log('activating');
       // Generate unique random
       const u = createHash('sha256').update((new Date()).valueOf().toString()).digest('hex').substr(0, 16);
-      request.post('http://' + host + '/api/register', {form : {r : u, voterId : UID }}, (err, response) => {
+      const x = pbkdf2.pbkdf2Sync(u, UID, 1, 32, 'sha512').toString('base64');
+
+      request.post('http://' + host + '/api/activate', {form : {r : x, voterId : UID }}, (err, response) => {
         if (err) return console.log(err);
-        console.log(response.body);
+        let body = JSON.parse(response.body);
+        if (body.status !== 'READY') {
+          console.log(body);
+          return;
+        }
+        const k = u + body.signedKey;
+        console.log('This KDF is stored in smartcard and smartphone : \n' + k);
+        const idv = pbkdf2.pbkdf2Sync(k, UID, 1, 32, 'sha512').toString('base64') + k.substr(45);
+        console.log('Your idv value : \n' + idv);
+        let filename = createHash('sha512').update((new Date()).valueOf().toString()).digest('hex').toString() + '.png';
+        var qr_svg = qr.image(k, { type: 'png' });
+        qr_svg.pipe(require('fs').createWriteStream(filename));
+        setTimeout(() => {
+          execSync(`/usr/bin/feh ${__dirname}/${filename}`);
+        }, 500);
       });
+      return;
+    case 'idv' :
+      if (!process.argv[3]) {
+        console.log('Please provide a k value, ex : node index.js idv kvaluestring');
+        return;
+      }
+      const k = process.argv[3];
+      if (k.length !== 148) {
+        console.log('Invalid k value, should be 148 length');
+        return;
+      }
+      const b = pbkdf2.pbkdf2Sync(k, UID, 1, 32, 'sha512').toString('base64');
+      const idv = b + k.substr(45);
+      console.log('Your idv value : \n' + idv);
+      return
     case 'state' :
       request.get('http://' + host + '/api/dpt-state/' + stateId, (err, response) => {
         if (err) return console.log(err);
