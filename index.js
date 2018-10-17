@@ -12,7 +12,16 @@ const pbkdf2 = require('pbkdf2');
 
 const action = process.argv[2];
 if (!action) throw('No action specified. Ex : node index operation host:port');
-const host = process.argv[3] || 'localhost:3000';
+const host = process.argv[3] || 'evote-server.skripsi.local:3443';
+
+// SSL keys
+const options = {
+  url : 'https://' + host,
+  key : fs.readFileSync('../sawtooth-evote-ejbca/KPU_Machines/DPTClientApp/dpt_client_app.key'),
+  cert : fs.readFileSync('../sawtooth-evote-ejbca/KPU_Machines/DPTClientApp/dpt_client_app.pem'),
+  ca : fs.readFileSync('../sawtooth-evote-ejbca/CA/KPUIntermediateCA-chain.pem'),
+  passphrase : '123456',
+}
 
 prompt.start();
 const schema = {
@@ -83,8 +92,9 @@ prompt.get(schema, (err, result) => {
       // Generate unique random
       const u = createHash('sha256').update((new Date()).valueOf().toString()).digest('hex').substr(0, 16);
       const x = pbkdf2.pbkdf2Sync(u, commonName, 1, 32, 'sha512').toString('base64');
-
-      request.post('http://' + host + '/api/activate', {form : {r : x, voterId : commonName }}, (err, response) => {
+      let opt = Object.assign(options, {});
+      opt.form = {r : x, voterId : commonName }
+      request.post('https://' + host + '/api/activate', opt, (err, response) => {
         if (err) return console.log(err);
         let body = JSON.parse(response.body);
         if (body.status !== 'READY') {
@@ -119,7 +129,7 @@ prompt.get(schema, (err, result) => {
       return
     case 'state' :
       console.log('Checking state...');
-      request.get('http://' + host + '/api/dpt-state/' + stateId, (err, response) => {
+      request.get('https://' + host + '/api/dpt-state/' + stateId, options, (err, response) => {
         if (err) return console.log(err);
         try {
           let body = JSON.parse(response.body);
