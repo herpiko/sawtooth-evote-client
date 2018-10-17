@@ -20,12 +20,12 @@ const schema = {
     cert : {
       message : 'Cert path',
       required : true,
-      default : 'certs/dpt/herpiko_52710501019120001.pem'
+      default : '../sawtooth-evote-ejbca/Dukcapil_DPT/52710501019120001_herpiko_dwi_aguno.pem'
     },
     key : {
       message : 'Key path',
       required : true,
-      default : 'certs/dpt/herpiko_52710501019120001.plain.key'
+      default : '../sawtooth-evote-ejbca/Dukcapil_DPT/52710501019120001_herpiko_dwi_aguno.plain.key'
     },
   }
 }
@@ -41,15 +41,15 @@ prompt.get(schema, (err, result) => {
   console.log("=====================================");
   for (var i in voterCert.subject.attributes) {
     console.log((voterCert.subject.attributes[i].name || voterCert.subject.attributes[i].type) + ' : ' + voterCert.subject.attributes[i].value);
-    if (voterCert.subject.attributes[i].type === '0.9.2342.19200300.100.1.1') {
+    if (voterCert.subject.attributes[i].name === 'commonName') {
       UID = voterCert.subject.attributes[i].value;
     }
   }
   console.log("=====================================\n");
 
   // Verify eKTP cert
-  const rootCA = pki.certificateFromPem(fs.readFileSync('certs/ca/KominfoRootCA.pem', 'utf8'));
-  const dukcapilCA = pki.certificateFromPem(fs.readFileSync('certs/ca/DukcapilIntermediateCA.pem', 'utf8'));
+  const rootCA = pki.certificateFromPem(fs.readFileSync('../sawtooth-evote-ejbca/CA/KominfoRootCA.pem', 'utf8'));
+  const dukcapilCA = pki.certificateFromPem(fs.readFileSync('../sawtooth-evote-ejbca/CA/DukcapilIntermediateCA.pem', 'utf8'));
   console.log('Verifying cert against CA...');
   try {
     const verified = dukcapilCA.verify(voterCert)
@@ -61,7 +61,7 @@ prompt.get(schema, (err, result) => {
 
   // Verify against CRL
   console.log('Verifying cert against CRL...');
-  let spawned = spawnSync('openssl', ['verify',  '-crl_check', '-CAfile', 'certs/ca/DukcapilIntermediateCA.crl-chain.pem', result.cert]);
+  let spawned = spawnSync('openssl', ['verify',  '-crl_check', '-CAfile', '../sawtooth-evote-ejbca/CA/DukcapilIntermediateCA-crl-chain.pem', result.cert]);
   let crlCheckResult = spawned.stdout.toString().indexOf('OK') > -1
   console.log(crlCheckResult ? '- Verified\n' : '- Not verified / revoked');
   if (!crlCheckResult) return;
@@ -81,6 +81,7 @@ prompt.get(schema, (err, result) => {
 
       request.post('http://' + host + '/api/activate', {form : {r : x, voterId : UID }}, (err, response) => {
         if (err) return console.log(err);
+        console.log(response.body);
         let body = JSON.parse(response.body);
         if (body.status !== 'READY') {
           console.log(body);
