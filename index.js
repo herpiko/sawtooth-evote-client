@@ -31,21 +31,25 @@ const schema = {
 }
 
 prompt.get(schema, (err, result) => {
-  var UID;
+  var commonName;
   const voterCertPem = fs.readFileSync(result.cert, 'utf8');
   const voterCert = pki.certificateFromPem(voterCertPem);
   const voterKeyPem = fs.readFileSync(result.key, 'utf8');
   const voterKey = pki.privateKeyFromPem(voterKeyPem);
 
   console.log("\nVOTER IDENTITY on " + result.cert);
-  console.log("=====================================");
+  console.log("==================================================");
   for (var i in voterCert.subject.attributes) {
     console.log((voterCert.subject.attributes[i].name || voterCert.subject.attributes[i].type) + ' : ' + voterCert.subject.attributes[i].value);
     if (voterCert.subject.attributes[i].name === 'commonName') {
-      UID = voterCert.subject.attributes[i].value;
+      commonName = voterCert.subject.attributes[i].value;
     }
   }
-  console.log("=====================================\n");
+  console.log("==================================================\n");
+  if (!commonName) {
+    console.log('Invalid commonName, please inspect the cert.');
+    return;
+  }
 
   // Verify eKTP cert
   const rootCA = pki.certificateFromPem(fs.readFileSync('../sawtooth-evote-ejbca/CA/KominfoRootCA.pem', 'utf8'));
@@ -67,30 +71,30 @@ prompt.get(schema, (err, result) => {
   if (!crlCheckResult) return;
 
   const familyName = 'provinceDPT';
-  const payloadNameHash = createHash('sha512').update(createHash('sha256').update(UID).digest('hex')).digest('hex');
+  const nameHash = createHash('sha256').update(commonName).digest('hex')
+  const payloadNameHash = createHash('sha512').update(nameHash).digest('hex');
   const familyNameHash = createHash('sha512').update(familyName).digest('hex');
   const stateId = familyNameHash.substr(0, 6) + payloadNameHash.substr(-64);
   console.log('stateId : ' + stateId);
   console.log('action : ' + action);
   switch(action) {
     case 'activate' : 
-      console.log('activating');
+      console.log('Activating...');
       // Generate unique random
       const u = createHash('sha256').update((new Date()).valueOf().toString()).digest('hex').substr(0, 16);
-      const x = pbkdf2.pbkdf2Sync(u, UID, 1, 32, 'sha512').toString('base64');
+      const x = pbkdf2.pbkdf2Sync(u, commonName, 1, 32, 'sha512').toString('base64');
 
-      request.post('http://' + host + '/api/activate', {form : {r : x, voterId : UID }}, (err, response) => {
+      request.post('http://' + host + '/api/activate', {form : {r : x, voterId : commonName }}, (err, response) => {
         if (err) return console.log(err);
-        console.log(response.body);
         let body = JSON.parse(response.body);
         if (body.status !== 'READY') {
           console.log(body);
           return;
         }
         const k = u + body.signedKey;
-        console.log('This KDF is stored in smartcard and smartphone : \n' + k);
-        const idv = pbkdf2.pbkdf2Sync(k, UID, 1, 32, 'sha512').toString('base64') + k.substr(45);
-        console.log('Your idv value : \n' + idv);
+        console.log('\n\nThis KDF (k) is stored in smartcard and smartphone : \n\n' + k);
+        const idv = pbkdf2.pbkdf2Sync(k, commonName, 1, 32, 'sha512').toString('base64') + k.substr(45);
+        console.log('\n\nYour idv value : \n\n' + idv);
         let filename = createHash('sha512').update((new Date()).valueOf().toString()).digest('hex').toString() + '.png';
         var qr_svg = qr.image(k, { type: 'png' });
         qr_svg.pipe(require('fs').createWriteStream(filename));
@@ -109,15 +113,20 @@ prompt.get(schema, (err, result) => {
         console.log('Invalid k value, should be 148 length');
         return;
       }
-      const b = pbkdf2.pbkdf2Sync(k, UID, 1, 32, 'sha512').toString('base64');
+      const b = pbkdf2.pbkdf2Sync(k, commonName, 1, 32, 'sha512').toString('base64');
       const idv = b + k.substr(45);
-      console.log('Your idv value : \n' + idv);
+      console.log('\nYour idv value : \n\n' + idv);
       return
     case 'state' :
+      console.log('Checking state...');
       request.get('http://' + host + '/api/dpt-state/' + stateId, (err, response) => {
         if (err) return console.log(err);
-        let body = JSON.parse(response.body);
-        console.log('Current state : ' + body[Object.keys(body)[0]].toUpperCase());
+        try {
+          let body = JSON.parse(response.body);
+          console.log('Current state : ' + body[Object.keys(body)[0]].toUpperCase());
+        } catch(e) {
+          console.log(response.body);
+        }
       });
   }
 

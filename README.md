@@ -1,6 +1,5 @@
 # sawtooth-evote-client
 
-- Check the `state` of the voter
-- Update eKTP/voterID to `ready` state (and retrieve `k` value)
-- Verify existing vote against local ledger
-- Verify existing vote against final result
+- `node index.js activate` - Activate the DPT to ready state
+- `node index.js state` - Check the state of the DPT
+- `node index.js idv kvaluestring` - Obtains idv value from kvaluestring (offline)

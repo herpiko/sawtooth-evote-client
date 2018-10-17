@@ -4,7 +4,10 @@
   "description": "- Check the `state` of the voter - Update eKTP/voterID to `ready` state (and retrieve `k` value) - Verify existing vote against local ledger - Verify existing vote against final result",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "activate" : "node index.js activate",
+    "idv" : "node index.js idv",
+    "state" : "node index.js state"
   },
   "repository": {
     "type": "git",
