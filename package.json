@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "activate" : "node index.js activate",
-    "idv" : "node index.js idv",
-    "state" : "node index.js state"
+    "activate": "node index.js activate",
+    "idv": "node index.js idv",
+    "state": "node index.js state",
+    "verify_bailout": "node index.js verify_bailout"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,7 @@
   },
   "homepage": "https://github.com/herpiko/sawtooth-evote-client#readme",
   "dependencies": {
+    "aes256": "^1.0.4",
     "js-base64": "^2.4.5",
     "node-forge": "^0.7.5",
     "pbkdf2": "^3.0.16",

@@ -4,6 +4,7 @@ const prompt = require('prompt');
 const {createHash} = require('crypto')
 const {spawnSync} = require('child_process');
 const execSync = require('child_process').execSync;
+const aes256 = require('aes256');
 const forge = require('node-forge');
 const pki = forge.pki;
 const base64 = require('js-base64').Base64;
@@ -101,7 +102,7 @@ prompt.get(schema, (err, result) => {
           console.log(body);
           return;
         }
-        const k = u + body.signedKey;
+        const k = u + '_' + body.signedKey;
         console.log('\n\nThis KDF (k) is stored in smartcard and smartphone : \n\n' + k);
         const idv = pbkdf2.pbkdf2Sync(k, commonName, 1, 32, 'sha512').toString('base64') + k.substr(45);
         console.log('\n\nYour idv value : \n\n' + idv);
@@ -119,13 +120,33 @@ prompt.get(schema, (err, result) => {
         return;
       }
       const k = process.argv[3];
-      if (k.length !== 148) {
-        console.log('Invalid k value, should be 148 length');
+      if (k.length !== 150) {
+        console.log('Invalid k value, should be 148 length. Current length : ' + k.length);
         return;
       }
       const b = pbkdf2.pbkdf2Sync(k, commonName, 1, 32, 'sha512').toString('base64');
       const idv = b + k.substr(45);
       console.log('\nYour idv value : \n\n' + idv);
+
+	  // State id
+      let payloadName = idv.substr(0,20)
+      console.log('\nYour stateIDs :\n');
+      const payloadNameHash = createHash('sha512').update(payloadName).digest('hex');
+      let familyNameHash = createHash('sha512').update('localVote').digest('hex');
+      console.log('local Vote StateID : ' + familyNameHash.substr(0,6) + payloadNameHash.substr(-64));
+
+      return
+    case 'verify_bailout' :
+      if (!process.argv[3]) {
+        console.log('Please provide a k value, ex : node index.js idv kvaluestring');
+        return;
+      }
+      if (!process.argv[4]) {
+        console.log('Please provide a o value (encrypted bailout)');
+        return;
+      }
+      var decrypted = aes256.decrypt(process.argv[3], process.argv[4])
+      console.log('voteValue : ' + decrypted)
       return
     case 'state' :
       console.log('Checking state...');
