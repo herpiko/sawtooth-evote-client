@@ -22,7 +22,7 @@
   "homepage": "https://github.com/herpiko/sawtooth-evote-client#readme",
   "dependencies": {
     "aes256": "^1.0.4",
-    "js-base64": "^2.4.5",
+    "js-base64": "^2.4.9",
     "node-forge": "^0.7.5",
     "pbkdf2": "^3.0.16",
     "prompt": "^1.0.0",

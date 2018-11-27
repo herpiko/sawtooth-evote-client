@@ -30,12 +30,12 @@ const schema = {
     cert : {
       message : 'Cert path',
       required : true,
-      default : '../sawtooth-evote-ejbca/Dukcapil_DPT/52710501019120001_herpiko_dwi_aguno.pem'
+      default : '../sawtooth-evote-ejbca/Dukcapil_DPT/herpiko_dwi_aguno.pem'
     },
     key : {
       message : 'Key path',
       required : true,
-      default : '../sawtooth-evote-ejbca/Dukcapil_DPT/52710501019120001_herpiko_dwi_aguno.plain.key'
+      default : '../sawtooth-evote-ejbca/Dukcapil_DPT/herpiko_dwi_aguno.plain.key'
     },
   }
 }
