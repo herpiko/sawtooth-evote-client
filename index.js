@@ -78,7 +78,11 @@ prompt.get(schema, (err, result) => {
   let spawned = spawnSync('openssl', ['verify',  '-crl_check', '-CAfile', '../sawtooth-evote-ejbca/CA/DukcapilIntermediateCA-crl-chain.pem', result.cert]);
   let crlCheckResult = spawned.stdout.toString().indexOf('OK') > -1
   console.log(crlCheckResult ? '- Verified\n' : '- Not verified / revoked');
-  if (!crlCheckResult) return;
+  if (!crlCheckResult) {
+    console.log(spawned.stderr.toString());
+    console.log(spawned.stdout.toString());
+    return;
+  }
 
   const familyName = 'provinceDPT';
   const nameHash = createHash('sha256').update(commonName).digest('hex')
