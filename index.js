@@ -132,12 +132,21 @@ prompt.get(schema, (err, result) => {
       const idv = b + k.substr(45);
       console.log('\nYour idv value : \n\n' + idv);
 
-	  // State id
+      // State id on localVote ledger
       let payloadName = idv.substr(0,20)
-      console.log('\nYour stateIDs :\n');
-      const payloadNameHash = createHash('sha512').update(payloadName).digest('hex');
+      let payloadNameHash = createHash('sha512').update(payloadName).digest('hex');
       let familyNameHash = createHash('sha512').update('localVote').digest('hex');
-      console.log('local Vote StateID : ' + familyNameHash.substr(0,6) + payloadNameHash.substr(-64));
+      let stateId = familyNameHash.substr(0,6) + payloadNameHash.substr(-64)
+      console.log('\nYour stateID on localVote ledger :');
+      console.log('StateID : ' + stateId);
+
+      // State id on provinceVote ledger
+      payloadName = stateId.substr(0,20)
+      payloadNameHash = createHash('sha512').update(payloadName).digest('hex');
+      familyNameHash = createHash('sha512').update('localVote').digest('hex');
+      stateId = familyNameHash.substr(0,6) + payloadNameHash.substr(-64)
+      console.log('\nYour stateID on provinceVote ledger :');
+      console.log('StateID : ' + familyNameHash.substr(0,6) + payloadNameHash.substr(-64));
 
       return
     case 'verify_bailout' :
