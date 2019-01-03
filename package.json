@@ -6,9 +6,12 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "activate": "node index.js activate",
+    "activate-saeful": "node index.js activate evote-server.skripsi.local:3443 saeful",
+    "activate-ayu": "node index.js activate evote-server.skripsi.local:3443 ayu",
+    "activate-batch": "npm run activate-saeful && npm run activate-ayu",
     "idv": "node index.js idv",
     "state": "node index.js state",
-    "verify_bailout": "node index.js verify_bailout"
+    "verify_ballot": "node index.js verify_ballot"
   },
   "repository": {
     "type": "git",

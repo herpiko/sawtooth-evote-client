@@ -12,30 +12,32 @@ const request = require('request');
 const pbkdf2 = require('pbkdf2');
 
 const action = process.argv[2];
-if (!action) throw('No action specified. Ex : node index operation host:port');
+if (!action) {
+  throw ('No action specified. Ex : node index operation host:port');
+}
 const host = process.argv[3] || 'evote-server.skripsi.local:3443';
 
 // SSL keys
 const options = {
-  url : 'https://' + host,
-  key : fs.readFileSync('../sawtooth-evote-ejbca/KPU_Machines/DPTClientApp/dpt_client_app.key'),
-  cert : fs.readFileSync('../sawtooth-evote-ejbca/KPU_Machines/DPTClientApp/dpt_client_app.pem'),
-  ca : fs.readFileSync('../sawtooth-evote-ejbca/CA/KPUIntermediateCA-chain.pem'),
-  passphrase : '123456',
+  url: 'https://' + host,
+  key: fs.readFileSync('../sawtooth-evote-ejbca/KPU_Machines/DPTClientApp/dpt_client_app.key'),
+  cert: fs.readFileSync('../sawtooth-evote-ejbca/KPU_Machines/DPTClientApp/dpt_client_app.pem'),
+  ca: fs.readFileSync('../sawtooth-evote-ejbca/CA/KPUIntermediateCA-chain.pem'),
+  passphrase: '123456',
 }
-
+console.log('-----------------------------' + process.argv[2])
 prompt.start();
 const schema = {
-  properties : {
-    cert : {
-      message : 'Cert path',
-      required : true,
-      default : '../sawtooth-evote-ejbca/Dukcapil_DPT/herpiko_dwi_aguno.pem'
+  properties: {
+    cert: {
+      message: 'Cert path',
+      required: true,
+      default: '../sawtooth-evote-ejbca/Dukcapil_DPT/' + (process.argv[4] === 'saeful' ? 'saeful_bahri.pem' : process.argv[4] === 'ayu' ? 'ayu_septiani.pem' : 'herpiko_dwi_aguno.pem')
     },
-    key : {
-      message : 'Key path',
-      required : true,
-      default : '../sawtooth-evote-ejbca/Dukcapil_DPT/herpiko_dwi_aguno.plain.key'
+    key: {
+      message: 'Key path',
+      required: true,
+      default: '../sawtooth-evote-ejbca/Dukcapil_DPT/' + (process.argv[4] === 'saeful' ? 'saeful_bahri.plain.key' : process.argv[4] === 'ayu' ? 'ayu_septiani.plain.key' : 'herpiko_dwi_aguno.plain.key')
     },
   }
 }
@@ -68,14 +70,14 @@ prompt.get(schema, (err, result) => {
   try {
     const verified = dukcapilCA.verify(voterCert)
     console.log('- Verified');
-  } catch (e) {
+  } catch ( e ) {
     console.log('\nError : eKTP is not verified');
     return;
   }
 
   // Verify against CRL
   console.log('Verifying cert against CRL...');
-  let spawned = spawnSync('openssl', ['verify',  '-crl_check', '-CAfile', '../sawtooth-evote-ejbca/CA/DukcapilIntermediateCA-crl-chain.pem', result.cert]);
+  let spawned = spawnSync('openssl', ['verify', '-crl_check', '-CAfile', '../sawtooth-evote-ejbca/CA/DukcapilIntermediateCA-crl-chain.pem', result.cert]);
   let crlCheckResult = spawned.stdout.toString().indexOf('OK') > -1
   console.log(crlCheckResult ? '- Verified\n' : '- Not verified / revoked');
   if (!crlCheckResult) {
@@ -91,16 +93,21 @@ prompt.get(schema, (err, result) => {
   const stateId = familyNameHash.substr(0, 6) + payloadNameHash.substr(-64);
   console.log('stateId : ' + stateId);
   console.log('action : ' + action);
-  switch(action) {
-    case 'activate' : 
+  switch (action) {
+    case 'activate':
       console.log('Activating...');
       // Generate unique random
       const u = createHash('sha256').update((new Date()).valueOf().toString()).digest('hex').substr(0, 16);
       const x = pbkdf2.pbkdf2Sync(u, commonName, 1, 32, 'sha512').toString('base64');
       let opt = Object.assign(options, {});
-      opt.form = {r : x, voterId : commonName }
+      opt.form = {
+        r: x,
+        voterId: commonName
+      }
       request.post('https://' + host + '/api/activate', opt, (err, response) => {
-        if (err) return console.log(err);
+        if (err) {
+          return console.log(err);
+        }
         let body = JSON.parse(response.body);
         if (body.status !== 'READY') {
           console.log(body);
@@ -111,14 +118,18 @@ prompt.get(schema, (err, result) => {
         const idv = pbkdf2.pbkdf2Sync(k, commonName, 1, 32, 'sha512').toString('base64') + k.substr(45);
         console.log('\n\nYour idv value : \n\n' + idv);
         let filename = createHash('sha512').update((new Date()).valueOf().toString()).digest('hex').toString() + '.png';
-        var qr_svg = qr.image(k, { type: 'png' });
+        var qr_svg = qr.image(k, {
+          type: 'png'
+        });
         qr_svg.pipe(require('fs').createWriteStream(filename));
-        setTimeout(() => {
-          execSync(`/usr/bin/feh ${__dirname}/${filename}`);
-        }, 500);
+        if (!process.argv[3]) {
+          setTimeout(() => {
+            execSync(`/usr/bin/feh ${__dirname}/${filename}`);
+          }, 500);
+        }
       });
       return;
-    case 'idv' :
+    case 'idv':
       if (!process.argv[3]) {
         console.log('Please provide a k value, ex : node index.js idv kvaluestring');
         return;
@@ -133,42 +144,44 @@ prompt.get(schema, (err, result) => {
       console.log('\nYour idv value : \n\n' + idv);
 
       // State id on localVote ledger
-      let payloadName = idv.substr(0,20)
+      let payloadName = idv.substr(0, 20)
       let payloadNameHash = createHash('sha512').update(payloadName).digest('hex');
       let familyNameHash = createHash('sha512').update('localVote').digest('hex');
-      let stateId = familyNameHash.substr(0,6) + payloadNameHash.substr(-64)
+      let stateId = familyNameHash.substr(0, 6) + payloadNameHash.substr(-64)
       console.log('\nYour stateID on localVote ledger :');
       console.log('StateID : ' + stateId);
 
       // State id on provinceVote ledger
-      payloadName = stateId.substr(0,20)
+      payloadName = stateId.substr(0, 20)
       payloadNameHash = createHash('sha512').update(payloadName).digest('hex');
       familyNameHash = createHash('sha512').update('localVote').digest('hex');
-      stateId = familyNameHash.substr(0,6) + payloadNameHash.substr(-64)
+      stateId = familyNameHash.substr(0, 6) + payloadNameHash.substr(-64)
       console.log('\nYour stateID on provinceVote ledger :');
-      console.log('StateID : ' + familyNameHash.substr(0,6) + payloadNameHash.substr(-64));
+      console.log('StateID : ' + familyNameHash.substr(0, 6) + payloadNameHash.substr(-64));
 
       return
-    case 'verify_bailout' :
+    case 'verify_ballot':
       if (!process.argv[3]) {
         console.log('Please provide a k value, ex : node index.js idv kvaluestring');
         return;
       }
       if (!process.argv[4]) {
-        console.log('Please provide a o value (encrypted bailout)');
+        console.log('Please provide a o value (encrypted ballot)');
         return;
       }
       var decrypted = aes256.decrypt(process.argv[3], process.argv[4])
       console.log('voteValue : ' + decrypted)
       return
-    case 'state' :
+    case 'state':
       console.log('Checking state...');
       request.get('https://' + host + '/api/dpt-state/' + stateId, options, (err, response) => {
-        if (err) return console.log(err);
+        if (err) {
+          return console.log(err);
+        }
         try {
           let body = JSON.parse(response.body);
           console.log('Current state : ' + body[Object.keys(body)[0]].toUpperCase());
-        } catch(e) {
+        } catch ( e ) {
           console.log(response.body);
         }
       });
